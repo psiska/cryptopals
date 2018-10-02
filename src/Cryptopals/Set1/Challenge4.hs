@@ -9,16 +9,17 @@ import           Data.Maybe      (catMaybes)
 import qualified Data.ByteString as B
 import           System.IO
 
-challenge4 :: FilePath -> IO ([U.XorFinding])
+challenge4 :: FilePath -> IO ([U.EntryAnalysis])
 challenge4 fp = do
   content <- bracket
     (openFile fp ReadMode)
     hClose
     (\inh -> B.hGetContents inh)
   -- now analyse each and every line
+  --
   let lines' = B.split (fromIntegral (ord '\n')) content
-  let opts = catMaybes $ map U.findSingleXor lines'
-  return $ take 20 (U.sortOptions opts)
+  let allEntries = concatMap U.allXoredResults lines'
+  return $ take 20 $ (U.sByCharP . U.fPosCosine) allEntries
 
 --, Just
 --    ( 53

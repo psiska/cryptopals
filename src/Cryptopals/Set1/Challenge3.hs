@@ -4,6 +4,7 @@ module Cryptopals.Set1.Challenge3 where
 import qualified Cryptopals.Util as U
 
 import qualified Data.ByteString as B
+import           Data.Maybe (listToMaybe)
 
 input :: B.ByteString
 input = "1b37373331363f78151b7f2b783431333d78397828372d363c78373e783a393b3736"
@@ -11,7 +12,9 @@ input = "1b37373331363f78151b7f2b783431333d78397828372d363c78373e783a393b3736"
 -- | Single byte xor cypher
 -- >>> :set -XOverloadedStrings
 -- >>> challenge3 "1b37373331363f78151b7f2b783431333d78397828372d363c78373e783a393b3736"
--- Just (88,0.67861676,"Cooking MC's like a pound of bacon")
--- TODO fix test
-challenge3 :: B.ByteString -> Maybe U.XorFinding
-challenge3 = U.findSingleXor
+-- Just (EntryAnalysis {key = [88], sourceData = "1b37373331363f78151b7f2b783431333d78397828372d363c78373e783a393b3736", deHex = "\ESC77316?x\NAK\ESC\DEL+x413=x9x(7-6<x7>x:9;76", decrypted = "Cooking MC's like a pound of bacon", validChar = 34, charPercentage = 100.0, distance = Distance {euclidean = 20.169820589496, manhattan = 71.1659411764706, minkowsi = 20.169820589496, cosine = 0.6684454853665066, jaccard = 1.625}})
+challenge3 :: B.ByteString -> Maybe U.EntryAnalysis
+challenge3 = listToMaybe . (U.sBy U.preferCharCount) . U.fPosCosine . U.allXoredResults
+
+challenge3Full :: B.ByteString -> [U.EntryAnalysis]
+challenge3Full = (U.sBy U.preferCharCount) . U.fPosCosine . U.allXoredResults

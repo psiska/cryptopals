@@ -1,14 +1,23 @@
+{-# LANGUAGE AllowAmbiguousTypes       #-}
+{-# LANGUAGE DataKinds                 #-}
+{-# LANGUAGE DeriveGeneric             #-}
+{-# LANGUAGE DuplicateRecordFields     #-}
+{-# LANGUAGE FlexibleContexts          #-}
+{-# LANGUAGE NoMonomorphismRestriction #-}
+{-# LANGUAGE TypeApplications          #-}
 module Cryptopals.Util.Freq where
 
 import           Cryptopals.Util.Codec
 
 import           Data.Bits       (Bits(..), (.&.), xor)
-import           Data.Char       (ord, toUpper)
-import           Data.List       (sortBy)
-import           Data.Maybe      (listToMaybe)
-import           Data.Ord        (Ordering(..))
 import qualified Data.ByteString as B
+import           Data.Char       (ord, toUpper)
+import           Data.Generics.Product
+import           Data.List       (sortBy)
+import           Data.Ord        (Ordering(..))
 import           Data.Word       (Word8)
+
+import           GHC.Generics    (Generic)
 
 freq :: B.ByteString -> [(Char, Double)]
 freq source =
@@ -116,16 +125,15 @@ hammingDistance i1 i2 =
   in foldl (\acc (w1, w2) -> acc + setBits (xor w1 w2)) 0 (B.zip i1 i2)
 
 
-type XorFinding = (Word8, Double, Int, Double, B.ByteString, B.ByteString, B.ByteString)
-
-
 data EntryAnalysis = EntryAnalysis
   { key :: [Word8]
-  , source :: B.ByteString
+  , sourceData :: B.ByteString
   , deHex :: B.ByteString
   , decrypted :: B.ByteString
+  , validChar :: Int
+  , charPercentage :: Double
   , distance :: Distance
-  }
+  } deriving (Generic, Show)
 
 data Distance = Distance
   { euclidean :: Double
@@ -133,20 +141,37 @@ data Distance = Distance
   , minkowsi  :: Double
   , cosine    :: Double
   , jaccard   :: Double
-  }
+  } deriving (Generic, Show)
 
--- | Provide all decoded strings for each Word8 (0..255) as key
-xorOptions :: (B.ByteString, B.ByteString) -> [XorFinding]
-xorOptions (s, hs) = map
-  (\k ->
-    let decoded = xorDecode' k hs
+xorOptions2 :: (B.ByteString, B.ByteString) -> [EntryAnalysis]
+xorOptions2 (source, hexRaw) = map
+  (\key ->
+    let decoded = xorDecode' key hexRaw
         fv = freqVector decoded
         validCharCount = length $ B.findIndices isEngChar decoded
         charPercentage = (fromIntegral validCharCount) / fromIntegral (B.length decoded) * 100.0
-        similarity = cosineSimilarity fv englishVectorSorted
-    in (k, similarity, validCharCount, charPercentage, decoded, s, hs))
+        distance = Distance
+          { euclidean = euclideanDistance fv englishVectorSorted
+          , manhattan = manhattanDistance fv englishVectorSorted
+          , minkowsi = minkowskiDistance 2 fv englishVectorSorted
+          , cosine = cosineSimilarity fv englishVectorSorted
+          , jaccard = jaccardSimilarity  fv englishVectorSorted
+          }
+    in EntryAnalysis
+      { key = [key]
+      , sourceData = source
+      , deHex = hexRaw
+      , decrypted = decoded
+      , validChar = validCharCount
+      , charPercentage = charPercentage
+      , distance = distance
+      })
+    --in (key, similarity, validCharCount, charPercentage, decoded, source, hexRaw))
   singleByteKeys
 
+
+
+-- TODO rename to preferFirst and seconds
 -- | sim and count. Sort by count and then by sim.
 preferCharCount :: (Ordering, Ordering) -> Ordering
 preferCharCount (_, GT) = LT
@@ -160,14 +185,24 @@ preferSimilarity (EQ, LT) = GT
 preferSimilarity (EQ, GT) = LT
 preferSimilarity (LT, _) = GT
 
-sortOptions :: [XorFinding] -> [XorFinding]
-sortOptions input =
-  let filtered = filter (\(_, x, _, _, _, _, _) -> x > 0.0) input
-      sorter = (\(_, sim1, _, cc1, _, _, _) (_, sim2, _, cc2, _, _, _) -> preferSimilarity (compare sim1 sim2, compare cc1 cc2))
-  in sortBy sorter filtered
+allXoredResults :: B.ByteString -> [EntryAnalysis]
+allXoredResults source = xorOptions2 (source, hex2raw source)
 
-analyseAllXors :: B.ByteString -> [XorFinding]
-analyseAllXors source = (sortOptions . xorOptions) (source, hex2raw source)
+fPositiveCosine :: [EntryAnalysis] -> [EntryAnalysis]
+fPositiveCosine = filter (\EntryAnalysis{distance = Distance {cosine = c}} -> c > 0.0)
 
-findSingleXor :: B.ByteString -> Maybe XorFinding
-findSingleXor source = (listToMaybe . analyseAllXors) source
+fPosCosine :: [EntryAnalysis] -> [EntryAnalysis]
+fPosCosine = filter (\x -> (((getField @"cosine") . (getField @"distance")) x) > 0.0)
+
+cosSim = getField @"cosine" . getField @"distance"
+
+sByCharP :: [EntryAnalysis] -> [EntryAnalysis]
+sByCharP = let sorter = (\x y ->
+                  preferCharCount (compare (cosSim x) (cosSim y), compare (charPercentage x) (charPercentage y)))
+           in sortBy sorter
+
+sBy :: ((Ordering, Ordering) -> Ordering) -> [EntryAnalysis] -> [EntryAnalysis]
+sBy sorting = let sorter = (\x y ->
+                    sorting (compare (cosSim x) (cosSim y), compare (charPercentage x) (charPercentage y)))
+           in sortBy sorter
+

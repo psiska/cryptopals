@@ -24,10 +24,11 @@ library
     Cryptopals.Util.Hex
     Cryptopals.Util.Codec
   build-depends:
-      base >=4.10 && <4.11
+      base >=4.10 && <5
     , base16-bytestring
     , base64-bytestring
     , bytestring
+    , generic-lens
     , massiv
     , pretty-simple
   hs-source-dirs: src
@@ -41,7 +42,7 @@ test-suite doctest
   main-is: doctest.hs
   hs-source-dirs: tests
   build-depends:
-      base >=4.9 && <5
+      base >=4.10 && <5
     , base16-bytestring
     , base64-bytestring
     , bytestring
@@ -59,7 +60,7 @@ test-suite cryptopals-tests
   build-tool-depends:
     tasty-discover:tasty-discover
   build-depends:
-      base >=4.10 && <4.11
+      base >=4.10 && <5
     , cryptopals
     , tasty >=0.11
     , tasty-discover

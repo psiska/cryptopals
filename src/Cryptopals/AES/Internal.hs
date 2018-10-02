@@ -35,7 +35,7 @@ instance Num GF where
   abs = id
   signum = fromIntegral . signum . runGF
   fromInteger i
-    -- | odd i = GF 0x80000000 -- x^0
+    --  odd i = GF 0x80000000 -- x^0
     | odd i = GF 0x80 -- x^0
     | otherwise = GF 0
 
