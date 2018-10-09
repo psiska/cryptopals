@@ -19,6 +19,7 @@ library
     Cryptopals.Set1.Challenge2
     Cryptopals.Set1.Challenge3
     Cryptopals.Set1.Challenge4
+    Cryptopals.Set1.Challenge5
     Cryptopals.Util
     Cryptopals.Util.Freq
     Cryptopals.Util.Hex

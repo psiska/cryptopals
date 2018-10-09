@@ -11,6 +11,7 @@ import           Cryptopals.Util.Codec
 
 import           Data.Bits       (Bits(..), (.&.), xor)
 import qualified Data.ByteString as B
+import qualified Data.ByteString.Lazy as BL
 import           Data.Char       (ord, toUpper)
 import           Data.Generics.Product
 import           Data.List       (sortBy)
@@ -206,3 +207,8 @@ sBy sorting = let sorter = (\x y ->
                     sorting (compare (cosSim x) (cosSim y), compare (charPercentage x) (charPercentage y)))
            in sortBy sorter
 
+
+repeatingXorEncrypt :: BL.ByteString -> BL.ByteString -> BL.ByteString
+repeatingXorEncrypt key content =
+  let repeatedKey = key `BL.append` repeatedKey
+  in BL.pack $ map (uncurry xor) (BL.zip content repeatedKey)
