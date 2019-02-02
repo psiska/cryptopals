@@ -5,6 +5,7 @@ import qualified Data.ByteString as B
 
 import           Data.Bits
 import           Data.Word
+import           Protolude
 
 newtype GF = GF { runGF :: Word8 } deriving (Eq, Show, Read, Bits)
 
@@ -31,8 +32,8 @@ instance Num GF where
   (-) = xor
   _ * 0 = 0
   a * b = xtimes a * unsafeShiftR b 1 + if testBit b 0 then a else 0
-  negate = id
-  abs = id
+  negate = identity
+  abs = identity
   signum = fromIntegral . signum . runGF
   fromInteger i
     --  odd i = GF 0x80000000 -- x^0

@@ -5,6 +5,7 @@ import qualified Cryptopals.Util as U
 
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Base16 as B16
+import           Protolude
 
 input :: B.ByteString
 input = "1c0111001f010100061a024b53535009181c"
@@ -20,5 +21,4 @@ challenge2 :: B.ByteString -> B.ByteString -> B.ByteString
 challenge2 source key' =
   let dKey    = (fst . B16.decode) key'
       dSource = (fst . B16.decode) source
-  in B16.encode $ U.xorDecode dKey dSource
-
+  in B16.encode $ U.xorByteStrings dKey dSource

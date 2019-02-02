@@ -5,11 +5,12 @@ import           Control.Exception (bracket)
 import qualified Cryptopals.Util as U
 
 import           Data.Char (ord)
-import           Data.Maybe      (catMaybes)
 import qualified Data.ByteString as B
 import           System.IO
+import           Protolude
 
-challenge4 :: FilePath -> IO ([U.EntryAnalysis])
+-- TODO create doctest
+challenge4 :: FilePath -> IO [U.EntryAnalysis]
 challenge4 fp = do
   content <- bracket
     (openFile fp ReadMode)
@@ -18,8 +19,8 @@ challenge4 fp = do
   -- now analyse each and every line
   --
   let lines' = B.split (fromIntegral (ord '\n')) content
-  let allEntries = concatMap U.allXoredResults lines'
-  return $ take 20 $ (U.sByCharP . U.fPosCosine) allEntries
+  let allEntries = concatMap (U.results . U.solveSingleXorKey) lines'
+  return $ take 20 $ ((U.sBy U.preferCharCount) . U.fPosCosine) allEntries
 
 --, Just
 --    ( 53

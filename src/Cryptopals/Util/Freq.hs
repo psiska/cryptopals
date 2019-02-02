@@ -5,21 +5,46 @@
 {-# LANGUAGE FlexibleContexts          #-}
 {-# LANGUAGE NoMonomorphismRestriction #-}
 {-# LANGUAGE TypeApplications          #-}
-module Cryptopals.Util.Freq where
-
-import           Cryptopals.Util.Codec
+module Cryptopals.Util.Freq
+  ( isEngChar
+  , freq
+  , freqSortedAlpha
+  , freqSorted
+  , freqVector
+  , freqList
+  , englishFreqList
+  , englishFreq
+  , englishFreqSorted
+  , englishVectorSorted
+  , levenshtein
+  , euclideanDistance
+  , manhattanDistance
+  , minkowskiDistance
+  , cosineSimilarity
+  , jaccardSimilarity
+  , hammingDistance
+  , preferCharCount
+  , preferSimilarity
+  , fPositiveCosine
+  , fPosCosine
+  , sBy
+  )
+  where
 
 import           Data.Bits       (Bits(..), (.&.), xor)
 import qualified Data.ByteString as B
-import qualified Data.ByteString.Lazy as BL
 import           Data.Char       (ord, toUpper)
-import           Data.Generics.Product
-import           Data.List       (sortBy)
+import           Data.List       (sortBy, (!!))
 import           Data.Ord        (Ordering(..))
 import           Data.Word       (Word8)
-
+import           Data.String (String)
+import           Data.Text.Prettyprint.Doc
 import           GHC.Generics    (Generic)
+import           Cryptopals.Util.Data
+import           Protolude
 
+-- TODO rename to frequencies
+-- Provide documentation
 freq :: B.ByteString -> [(Char, Double)]
 freq source =
   let tl = B.length source
@@ -39,12 +64,15 @@ isEngChar i =
   || (i > 63 && i < 91)
   || (i > 96 && i < 123)
 
+-- TODO rename to sortFrequenciesByChar
 freqSortedAlpha :: B.ByteString -> [(Char, Double)]
 freqSortedAlpha source = (sortBy (\f s -> compare (fst f) (fst s)) (freq source))
 
+-- TODO rename to sortFrequenciesByCount
 freqSorted :: B.ByteString -> [(Char, Double)]
 freqSorted source = reverse $ (sortBy (\f s -> compare (snd f) (snd s)) (freq source))
 
+-- TODO rename to frequencies2Vector
 freqVector :: B.ByteString -> [Double]
 freqVector = map snd . freqSortedAlpha
 
@@ -52,9 +80,11 @@ freqList :: B.ByteString -> String
 freqList source =
   map fst (freqSorted source)
 
+-- | Ordering of letters in english language.
 englishFreqList :: String
 englishFreqList = "etaoinshrdlcumwfgypbvkjxqz"
 
+-- | Frequencies definition of char and occurence for english language.
 englishFreq :: [(Char, Double)]
 englishFreq =
   [ ('e', 12.792), ('t', 9.056), ('a', 8.167), ('o', 7.507), ('i', 6.966), ('n', 6.749)
@@ -63,10 +93,11 @@ englishFreq =
   , ('p',  1.929), ('b', 1.492), ('v', 0.978), ('k', 0.772), ('j', 0.153), ('x', 0.150)
   , ('q',  0.095), ('z', 0.074)
   ]
-
+-- TODO is this really needed?
 englishFreqSorted :: [(Char, Double)]
 englishFreqSorted = sortBy (\f s -> compare (fst f) (fst s)) englishFreq
 
+-- TODO is this really needed?
 englishVectorSorted :: [Double]
 englishVectorSorted =  map snd englishFreqSorted
 
@@ -126,51 +157,6 @@ hammingDistance i1 i2 =
   in foldl (\acc (w1, w2) -> acc + setBits (xor w1 w2)) 0 (B.zip i1 i2)
 
 
-data EntryAnalysis = EntryAnalysis
-  { key :: [Word8]
-  , sourceData :: B.ByteString
-  , deHex :: B.ByteString
-  , decrypted :: B.ByteString
-  , validChar :: Int
-  , charPercentage :: Double
-  , distance :: Distance
-  } deriving (Generic, Show)
-
-data Distance = Distance
-  { euclidean :: Double
-  , manhattan :: Double
-  , minkowsi  :: Double
-  , cosine    :: Double
-  , jaccard   :: Double
-  } deriving (Generic, Show)
-
-xorOptions2 :: (B.ByteString, B.ByteString) -> [EntryAnalysis]
-xorOptions2 (source, hexRaw) = map
-  (\key ->
-    let decoded = xorDecode' key hexRaw
-        fv = freqVector decoded
-        validCharCount = length $ B.findIndices isEngChar decoded
-        charPercentage = (fromIntegral validCharCount) / fromIntegral (B.length decoded) * 100.0
-        distance = Distance
-          { euclidean = euclideanDistance fv englishVectorSorted
-          , manhattan = manhattanDistance fv englishVectorSorted
-          , minkowsi = minkowskiDistance 2 fv englishVectorSorted
-          , cosine = cosineSimilarity fv englishVectorSorted
-          , jaccard = jaccardSimilarity  fv englishVectorSorted
-          }
-    in EntryAnalysis
-      { key = [key]
-      , sourceData = source
-      , deHex = hexRaw
-      , decrypted = decoded
-      , validChar = validCharCount
-      , charPercentage = charPercentage
-      , distance = distance
-      })
-    --in (key, similarity, validCharCount, charPercentage, decoded, source, hexRaw))
-  singleByteKeys
-
-
 
 -- TODO rename to preferFirst and seconds
 -- | sim and count. Sort by count and then by sim.
@@ -186,29 +172,16 @@ preferSimilarity (EQ, LT) = GT
 preferSimilarity (EQ, GT) = LT
 preferSimilarity (LT, _) = GT
 
-allXoredResults :: B.ByteString -> [EntryAnalysis]
-allXoredResults source = xorOptions2 (source, hex2raw source)
-
 fPositiveCosine :: [EntryAnalysis] -> [EntryAnalysis]
 fPositiveCosine = filter (\EntryAnalysis{distance = Distance {cosine = c}} -> c > 0.0)
 
 fPosCosine :: [EntryAnalysis] -> [EntryAnalysis]
 fPosCosine = filter (\x -> (((getField @"cosine") . (getField @"distance")) x) > 0.0)
 
-cosSim = getField @"cosine" . getField @"distance"
-
-sByCharP :: [EntryAnalysis] -> [EntryAnalysis]
-sByCharP = let sorter = (\x y ->
-                  preferCharCount (compare (cosSim x) (cosSim y), compare (charPercentage x) (charPercentage y)))
-           in sortBy sorter
 
 sBy :: ((Ordering, Ordering) -> Ordering) -> [EntryAnalysis] -> [EntryAnalysis]
 sBy sorting = let sorter = (\x y ->
                     sorting (compare (cosSim x) (cosSim y), compare (charPercentage x) (charPercentage y)))
+                      where cosSim = getField @"cosine" . getField @"distance"
+
            in sortBy sorter
-
-
-repeatingXorEncrypt :: BL.ByteString -> BL.ByteString -> BL.ByteString
-repeatingXorEncrypt key content =
-  let repeatedKey = key `BL.append` repeatedKey
-  in BL.pack $ map (uncurry xor) (BL.zip content repeatedKey)

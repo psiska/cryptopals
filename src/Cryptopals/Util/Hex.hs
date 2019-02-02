@@ -1,6 +1,8 @@
 module Cryptopals.Util.Hex where
 
 import           Data.Char       (digitToInt)
+import           Data.String (String)
+import           Protolude
 
 sFromHex :: String -> [Int]
 sFromHex = hop . (map digitToInt)

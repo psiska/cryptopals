@@ -20,20 +20,29 @@ library
     Cryptopals.Set1.Challenge3
     Cryptopals.Set1.Challenge4
     Cryptopals.Set1.Challenge5
+    Cryptopals.Set1.Challenge6
     Cryptopals.Util
+    Cryptopals.Util.Data
     Cryptopals.Util.Freq
     Cryptopals.Util.Hex
     Cryptopals.Util.Codec
+    Cryptopals.Util.Codec.Strict
+    Cryptopals.Util.Codec.Lazy
+    Cryptopals.Util.Solve
   build-depends:
       base >=4.10 && <5
     , base16-bytestring
     , base64-bytestring
     , bytestring
     , generic-lens
-    , massiv
-    , pretty-simple
+    --, massiv
+    , prettyprinter
+    , protolude
+    , text
   hs-source-dirs: src
-  default-extensions: OverloadedStrings
+  default-extensions:
+    OverloadedStrings
+    NoImplicitPrelude
   default-language:   Haskell2010
   ghc-options:        -Wall
 
