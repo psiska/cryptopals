@@ -10,7 +10,7 @@ import           System.IO
 import           Protolude
 
 -- TODO create doctest
-challenge4 :: FilePath -> IO [U.EntryAnalysis]
+challenge4 :: FilePath -> IO [U.DecodeAnalysis]
 challenge4 fp = do
   content <- bracket
     (openFile fp ReadMode)

@@ -4,8 +4,8 @@
 module Cryptopals.Util.Data
   ( AnalysisResult(..)
   , Distance(..)
-  , EntryAnalysis(..)
-  , TextAnalysis(..)
+  , DecodeAnalysis(..)
+  , DataAnalysis(..)
   ) where
 
 import qualified Data.ByteString as B
@@ -21,12 +21,12 @@ data AnalysisResult = AnalysisResult
   , resultData :: B.ByteString
   } deriving (Generic, Show)
 
-data TextAnalysis = TextAnalysis
+data DataAnalysis = DataAnalysis
   { sourceData :: B.ByteString
-  , results :: [EntryAnalysis]
+  , results :: [DecodeAnalysis]
   } deriving (Generic, Show)
 
-data EntryAnalysis = EntryAnalysis
+data DecodeAnalysis = DecodeAnalysis
   { key :: [Word8]
   , decrypted :: B.ByteString
   , validChar :: Int
@@ -54,7 +54,7 @@ instance Pretty AnalysisResult where
     , pretty $ TE.decodeUtf8 resultData
     ]
 
-instance Pretty EntryAnalysis where
+instance Pretty DecodeAnalysis where
   pretty ea =
     "-----------"
     <+> hardline
@@ -80,8 +80,8 @@ instance Pretty Distance where
          , "jaccard  " <+> ":" <+> pretty jaccard
          ]
 
-instance Pretty TextAnalysis where
-  pretty TextAnalysis { sourceData, results} =
+instance Pretty DataAnalysis where
+  pretty DataAnalysis { sourceData, results} =
     "source"
     <+> align (pretty (TE.decodeUtf8 sourceData))
     <+> hardline

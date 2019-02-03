@@ -1,11 +1,13 @@
 {-# LANGUAGE OverloadedStrings #-}
 module Cryptopals.Set1.Challenge6 where
 
-import           Control.Exception (bracket)
 import qualified Cryptopals.Util as U
 
 import qualified Data.ByteString as B
-import           System.IO (openFile, hClose)
+import qualified Data.ByteString.Base64 as B64
+import qualified Data.Text as T
+import qualified Data.Text.Encoding as TE
+import           Data.Text.Prettyprint.Doc
 import           Protolude
 
 keySize' :: Int
@@ -13,46 +15,38 @@ keySize' = 2
 
 
 -- challenge6 2 "./resources/s1c6.txt"
-challenge6 ::  FilePath -> IO (Maybe U.TextAnalysis)
+challenge6 ::  FilePath -> IO ()
 challenge6 fp = do
-  content <- bracket
-    (openFile fp ReadMode)
-    hClose
-    (\inh -> B.hGetContents inh)
-  putText  "Content"
+  content <- U.stripSpace <$> B.readFile fp
+  putText  "Raw content:"
   putText $ show content
-  -- TODO base 64 decrypt
-  let keySizes = U.properKeySize (2, 40) content
-  --let keySizes = U.findKeySize 2 40 content
+
+  case B64.decode content of
+    Left err -> putText $ "Base64 decode failed - err: " <> T.pack err
+    Right inputContent -> challenge6Internal inputContent
+
+
+challenge6Internal :: B.ByteString -> IO ()
+challenge6Internal inputContent = do
+  putText "Base64 decoded input:"
+  putText $ show inputContent
+
+  let keySizes = U.findKeySize (2, 40) 4 inputContent
+  putText $ "Top five keysizes found: " <> show (take 5 keySizes)
   let choosenKeySize = maybe 2 fst (head keySizes)
-  --let choosenKeySize = (fst . head) keySizes
-  --putStrLn $ "Found possible keysize: " <> show choosenKeySize
   putText $ "Found possible keysize: " <> show choosenKeySize
 
-  let dataAnalysis = U.solveXorKey choosenKeySize content
-  --putStrLn $ "Data" <> show dataAnalysis
-  putText $ "Data" <> show dataAnalysis
+  let dataAnalysis = U.solveXorKey choosenKeySize inputContent
 
-  --let keys = map U.keyFromAnalysis dataAnalysis
-  --putStrLn $ "Keys" <> show keys
-  --TODO show decrypted text with those keys
-  --
-  let analysisResults = map (\ta -> U.ta2ar ta content) dataAnalysis
-  --putStrLn $ "Results: " <> show analysisResults
-  putText $ "Results: " <> show analysisResults
+  --putText "Data:"
+  --putText $ show $ pretty dataAnalysis
 
-  return $ head dataAnalysis
+  let computedKeys = U.keysFromData dataAnalysis
+  putText "ComputedKeys - raw: "
+  putText $ show computedKeys
+  putText "ComputedKeys - utf8 encoded: "
+  putText $ show (map (TE.decodeUtf8 . B.pack) computedKeys)
 
-  --let allResult = U.repeatingXorResults choosenKeySize content
-  --return allResult
-
-  {--
-
-  putStrLn $ "Found results: " <> show allResult
-  let key = U.keyFromAnalysis allResult
-  putStrLn $ "Found possible key: " <> show key
-
-  -- TODO Create result
-  let result = U.xorByteStrings key content
-  return result
-  --}
+  let analysisResults = map (U.applyKey inputContent) computedKeys
+  putText "Results: "
+  putText $ show $ pretty $ head analysisResults

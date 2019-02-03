@@ -2,19 +2,17 @@ module Cryptopals.Util.Codec
   ( module Cryptopals.Util.Codec.Strict
   , singleByteKeys
   , hex2raw
+  , stripSpace
   , sizedChunks
   , sizedChunksTake
   , subsequencesOfSize
-  --, module Lazy
-  )
-    where
+  ) where
 
---import Cryptopals.Util.Codec.Lazy
-import Cryptopals.Util.Codec.Strict
-
-import Data.Function (fix)
-import Data.List ((!!))
-import Data.Word (Word8)
+import           Cryptopals.Util.Codec.Strict
+import           Data.Char(isSpace, chr)
+import           Data.Function (fix)
+import           Data.List ((!!))
+import           Data.Word (Word8)
 import qualified Data.ByteString        as B
 import qualified Data.ByteString.Base16 as B16
 import           Protolude
@@ -24,6 +22,9 @@ singleByteKeys = enumFrom 0
 
 hex2raw :: B.ByteString -> B.ByteString
 hex2raw = fst . B16.decode
+
+stripSpace :: B.ByteString -> B.ByteString
+stripSpace = B.filter (not . isSpace . chr . fromIntegral)
 
 -- split input bytestring to even sized chunks defined by first arg
 -- | sizedChunks 2 "dkf;alsjfkopevtjpvosjdfpovjdsf;lvdsfj;v"

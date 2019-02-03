@@ -2,9 +2,18 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE DuplicateRecordFields #-}
+{-# LANGUAGE AllowAmbiguousTypes       #-}
+{-# LANGUAGE DataKinds                 #-}
+{-# LANGUAGE DeriveGeneric             #-}
+{-# LANGUAGE DuplicateRecordFields     #-}
+{-# LANGUAGE FlexibleContexts          #-}
+{-# LANGUAGE NoMonomorphismRestriction #-}
+{-# LANGUAGE TypeApplications          #-}
 module Cryptopals.Util.Solve where
 
 import qualified Data.ByteString as B
+import           Data.Generics.Product
+import           Data.Generics.Internal.VL.Lens
 import           Data.List       (sortBy, (!!))
 import           Data.Maybe      (catMaybes)
 import           Data.Text.Prettyprint.Doc
@@ -14,68 +23,63 @@ import           Cryptopals.Util.Freq
 import           Cryptopals.Util.Data
 import           Protolude
 
-solveSingleXorKey :: B.ByteString -> TextAnalysis
+solveSingleXorKey :: B.ByteString -> DataAnalysis
 solveSingleXorKey source =
-  TextAnalysis
+  DataAnalysis
     { sourceData = source
     , results = map (analyzeInput source) singleByteKeys
     }
 
-filteredAndCharSorted :: TextAnalysis -> TextAnalysis
-filteredAndCharSorted TextAnalysis { sourceData = s', results = r' } =
-  TextAnalysis
+filteredAndCharSorted :: DataAnalysis -> DataAnalysis
+filteredAndCharSorted DataAnalysis { sourceData = s', results = r' } =
+  DataAnalysis
     { sourceData = s'
     , results = ((sBy preferCharCount) . fPosCosine) r'
     }
 
-xorResultFull :: B.ByteString -> TextAnalysis
+xorResultFull :: B.ByteString -> DataAnalysis
 xorResultFull = filteredAndCharSorted . solveSingleXorKey
 
--- TODO return top 5 key variants
--- TODO continue here
--- TODO Challenge6
-solveXorKey :: Int -> B.ByteString -> [TextAnalysis]
+-- TODO try to make use of lenses
+solveXorKey :: Int -> B.ByteString -> [DataAnalysis]
 solveXorKey size input =
-  --let fullResult ::
-  let fullResult = ((map xorResultFull) . B.transpose . (sizedChunks size)) input
-      topFive = map (\TextAnalysis {sourceData = s', results = r'} -> TextAnalysis {sourceData = s', results = take 5 r'}) fullResult
+  let transposedChunks :: [B.ByteString]
+      transposedChunks = B.transpose $ sizedChunks size input
+      fullResult = map xorResultFull transposedChunks
+      topFive = map (\DataAnalysis {sourceData, results = r'} -> DataAnalysis {sourceData, results = take 5 r'}) fullResult
+      --tf = map (field @"results" .~ (take 5)) fullResult
   in topFive
 
---keyFromAnalysis :: TextAnalysis -> B.ByteString
---keyFromAnalysis TextAnalysis {results = r} = B.concat $ map B.pack r
+-- | Taking output from  solveXorKey
+keysFromData :: [DataAnalysis] -> [[Word8]]
+keysFromData = transpose . (map (concatMap key . results))
 
--- TODO rename to something meaningful
-ta2ar :: TextAnalysis -> B.ByteString -> AnalysisResult
-ta2ar TextAnalysis {sourceData, results} k =
-  AnalysisResult
-    { inputData = sourceData
-    , keyUsed = B.concat $ map (B.pack . key) results
-    , resultData = CS.xorByteStrings k sourceData
+-- | Apply key to some data and show result
+applyKey :: B.ByteString -> [Word8] -> AnalysisResult
+applyKey input key =
+  let bsKey = B.pack key
+  in AnalysisResult
+    { inputData = input
+    , keyUsed = bsKey
+    , resultData = CS.xorByteStrings bsKey input
     }
-
--- TODO Challenge6
--- TODO is this used ?? remove if not
-keyFromAnalysis :: [EntryAnalysis] -> B.ByteString
-keyFromAnalysis entries = B.pack $ foldl (\b EntryAnalysis{key = k} -> b <> k) [] entries
 
 -- Key
 --
--- TODO new param - size of chunks to take in account when determining keySize
-properKeySize :: (Int, Int) -> B.ByteString -> [(Int, Float)]
-properKeySize (lower, upper) content =
+-- | Try to find out what is good chunkSize
+findKeySize :: (Int, Int) -> Int -> B.ByteString -> [(Int, Float)]
+findKeySize (lower, upper) chunkCount content =
   let sorter = (\x y -> compare (snd x) (snd y))
-  in sortBy sorter $ catMaybes $ fmap (hammingForKS content) [lower..upper]
+  in sortBy sorter $ catMaybes $ fmap (hammingForKS content chunkCount) [lower..upper]
 
-hammingForKS :: B.ByteString -> Int -> Maybe (Int, Float)
-hammingForKS input ks =
-  if B.length input < ks * chunkCount
+hammingForKS :: B.ByteString -> Int -> Int -> Maybe (Int, Float)
+hammingForKS input chunkCount keySize =
+  if B.length input < keySize * chunkCount
     then Nothing
-    else Just (ks, average hamming / fromIntegral ks)
+    else Just (keySize, average hamming / fromIntegral keySize)
   where
-    chunkCount :: Int
-    chunkCount = 4
     -- create chunks
-    chunks = sizedChunksTake ks chunkCount input
+    chunks = sizedChunksTake keySize chunkCount input
     -- create permutations
     subSeqs = subsequencesOfSize 2 chunks
     -- compute hamming

@@ -1,6 +1,5 @@
 {-# LANGUAGE AllowAmbiguousTypes       #-}
 {-# LANGUAGE DataKinds                 #-}
---{-# LANGUAGE DuplicateRecordFields     #-}
 {-# LANGUAGE FlexibleContexts          #-}
 {-# LANGUAGE NoMonomorphismRestriction #-}
 {-# LANGUAGE TypeApplications          #-}
@@ -118,7 +117,7 @@ hammingDistance i1 i2 =
 
 -- | Analyze byte block with single Word8 as a key.
 -- TODO in future maybe provide way how to just compare two ByteString - thus factor out the xorWithWord8
-analyzeInput :: B.ByteString -> Word8 -> EntryAnalysis
+analyzeInput :: B.ByteString -> Word8 -> DecodeAnalysis
 analyzeInput source key =
   let decoded = xorWithWord8 key source
       -- obtain vector of frequencies for source
@@ -134,7 +133,7 @@ analyzeInput source key =
         , cosine = cosineSimilarity fv englishFv
         , jaccard = jaccardSimilarity  fv englishFv
         }
-  in EntryAnalysis
+  in DecodeAnalysis
     { key = [key]
     , decrypted = decoded
     , validChar = validCharCount
@@ -155,10 +154,10 @@ preferSimilarity (EQ, LT) = GT
 preferSimilarity (EQ, GT) = LT
 preferSimilarity (LT, _) = GT
 
-fPosCosine :: [EntryAnalysis] -> [EntryAnalysis]
+fPosCosine :: [DecodeAnalysis] -> [DecodeAnalysis]
 fPosCosine = filter (\x -> (((getField @"cosine") . (getField @"distance")) x) > 0.0)
 
-sBy :: ((Ordering, Ordering) -> Ordering) -> [EntryAnalysis] -> [EntryAnalysis]
+sBy :: ((Ordering, Ordering) -> Ordering) -> [DecodeAnalysis] -> [DecodeAnalysis]
 sBy sorting = let sorter = (\x y ->
                     sorting (compare (cosSim x) (cosSim y), compare (charPercentage x) (charPercentage y)))
                       where cosSim = getField @"cosine" . getField @"distance"
