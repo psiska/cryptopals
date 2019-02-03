@@ -1,31 +1,16 @@
 {-# LANGUAGE AllowAmbiguousTypes       #-}
 {-# LANGUAGE DataKinds                 #-}
-{-# LANGUAGE DeriveGeneric             #-}
-{-# LANGUAGE DuplicateRecordFields     #-}
+--{-# LANGUAGE DuplicateRecordFields     #-}
 {-# LANGUAGE FlexibleContexts          #-}
 {-# LANGUAGE NoMonomorphismRestriction #-}
 {-# LANGUAGE TypeApplications          #-}
 module Cryptopals.Util.Freq
   ( isEngChar
-  , freq
-  , freqSortedAlpha
-  , freqSorted
-  , freqVector
-  , freqList
-  , englishFreqList
-  , englishFreq
-  , englishFreqSorted
-  , englishVectorSorted
-  , levenshtein
-  , euclideanDistance
-  , manhattanDistance
-  , minkowskiDistance
-  , cosineSimilarity
-  , jaccardSimilarity
+  , analyzeInput
   , hammingDistance
+  , levenshtein
   , preferCharCount
   , preferSimilarity
-  , fPositiveCosine
   , fPosCosine
   , sBy
   )
@@ -38,23 +23,9 @@ import           Data.List       (sortBy, (!!))
 import           Data.Ord        (Ordering(..))
 import           Data.Word       (Word8)
 import           Data.String (String)
-import           Data.Text.Prettyprint.Doc
-import           GHC.Generics    (Generic)
 import           Cryptopals.Util.Data
+import           Cryptopals.Util.Codec.Strict (xorWithWord8)
 import           Protolude
-
--- TODO rename to frequencies
--- Provide documentation
-freq :: B.ByteString -> [(Char, Double)]
-freq source =
-  let tl = B.length source
-      charOcc :: B.ByteString -> Char -> Double
-      charOcc text c = fromIntegral (B.count ((fromIntegral . ord) c) text)
-      charFreq :: B.ByteString -> Char -> Double
-      charFreq text c = (charOcc text c  + charOcc text (toUpper c)) / (fromIntegral tl) * 100
-      f :: B.ByteString -> Char -> (Char, Double)
-      f text c = (c, charFreq text c)
-  in map (f source) ['a'..'z']
 
 isEngChar :: Word8 -> Bool
 isEngChar i =
@@ -64,42 +35,31 @@ isEngChar i =
   || (i > 63 && i < 91)
   || (i > 96 && i < 123)
 
--- TODO rename to sortFrequenciesByChar
-freqSortedAlpha :: B.ByteString -> [(Char, Double)]
-freqSortedAlpha source = (sortBy (\f s -> compare (fst f) (fst s)) (freq source))
+-- | Count the letter frequency in provided source bytestring
+-- Counts for both lower and upper case letter
+letterFrequency :: B.ByteString -> [(Char, Double)]
+letterFrequency source =
+  let tl = B.length source
+      charOcc :: B.ByteString -> Char -> Double
+      charOcc text c = fromIntegral (B.count ((fromIntegral . ord) c) text)
+      charFreq :: B.ByteString -> Char -> Double
+      charFreq text c = (charOcc text c  + charOcc text (toUpper c)) / (fromIntegral tl) * 100
+      f :: B.ByteString -> Char -> (Char, Double)
+      f text c = (c, charFreq text c)
+  in map (f source) ['a'..'z']
 
--- TODO rename to sortFrequenciesByCount
-freqSorted :: B.ByteString -> [(Char, Double)]
-freqSorted source = reverse $ (sortBy (\f s -> compare (snd f) (snd s)) (freq source))
-
--- TODO rename to frequencies2Vector
-freqVector :: B.ByteString -> [Double]
-freqVector = map snd . freqSortedAlpha
-
-freqList :: B.ByteString -> String
-freqList source =
-  map fst (freqSorted source)
-
--- | Ordering of letters in english language.
-englishFreqList :: String
-englishFreqList = "etaoinshrdlcumwfgypbvkjxqz"
+letterFrequencyByAlpha :: B.ByteString -> [(Char, Double)]
+letterFrequencyByAlpha source = (sortBy (\f s -> compare (fst f) (fst s)) (letterFrequency source))
 
 -- | Frequencies definition of char and occurence for english language.
-englishFreq :: [(Char, Double)]
-englishFreq =
+englishFrequencies :: [(Char, Double)]
+englishFrequencies =
   [ ('e', 12.792), ('t', 9.056), ('a', 8.167), ('o', 7.507), ('i', 6.966), ('n', 6.749)
   , ('s',  6.327), ('h', 6.094), ('r', 5.987), ('d', 4.253), ('l', 4.025), ('c', 2.782)
   , ('u',  2.758), ('m', 2.406), ('w', 2.360), ('f', 2.228), ('g', 2.015), ('y', 1.974)
   , ('p',  1.929), ('b', 1.492), ('v', 0.978), ('k', 0.772), ('j', 0.153), ('x', 0.150)
   , ('q',  0.095), ('z', 0.074)
   ]
--- TODO is this really needed?
-englishFreqSorted :: [(Char, Double)]
-englishFreqSorted = sortBy (\f s -> compare (fst f) (fst s)) englishFreq
-
--- TODO is this really needed?
-englishVectorSorted :: [Double]
-englishVectorSorted =  map snd englishFreqSorted
 
 levenshtein :: String -> String -> Int
 levenshtein s t =
@@ -156,9 +116,32 @@ hammingDistance i1 i2 =
         | otherwise = 1 + (setBits (x .&. (x - 1)))
   in foldl (\acc (w1, w2) -> acc + setBits (xor w1 w2)) 0 (B.zip i1 i2)
 
+-- | Analyze byte block with single Word8 as a key.
+-- TODO in future maybe provide way how to just compare two ByteString - thus factor out the xorWithWord8
+analyzeInput :: B.ByteString -> Word8 -> EntryAnalysis
+analyzeInput source key =
+  let decoded = xorWithWord8 key source
+      -- obtain vector of frequencies for source
+      fv = map snd $ letterFrequencyByAlpha decoded
+      -- obtain vector of frequencies for english text
+      englishFv = map snd $ sortBy (\f s -> compare (fst f) (fst s)) englishFrequencies
+      validCharCount = length $ B.findIndices isEngChar decoded
+      charPercentage = (fromIntegral validCharCount) / fromIntegral (B.length decoded) * 100.0
+      distance = Distance
+        { euclidean = euclideanDistance fv englishFv
+        , manhattan = manhattanDistance fv englishFv
+        , minkowski = minkowskiDistance 2 fv englishFv
+        , cosine = cosineSimilarity fv englishFv
+        , jaccard = jaccardSimilarity  fv englishFv
+        }
+  in EntryAnalysis
+    { key = [key]
+    , decrypted = decoded
+    , validChar = validCharCount
+    , charPercentage = charPercentage
+    , distance = distance
+    }
 
-
--- TODO rename to preferFirst and seconds
 -- | sim and count. Sort by count and then by sim.
 preferCharCount :: (Ordering, Ordering) -> Ordering
 preferCharCount (_, GT) = LT
@@ -172,12 +155,8 @@ preferSimilarity (EQ, LT) = GT
 preferSimilarity (EQ, GT) = LT
 preferSimilarity (LT, _) = GT
 
-fPositiveCosine :: [EntryAnalysis] -> [EntryAnalysis]
-fPositiveCosine = filter (\EntryAnalysis{distance = Distance {cosine = c}} -> c > 0.0)
-
 fPosCosine :: [EntryAnalysis] -> [EntryAnalysis]
 fPosCosine = filter (\x -> (((getField @"cosine") . (getField @"distance")) x) > 0.0)
-
 
 sBy :: ((Ordering, Ordering) -> Ordering) -> [EntryAnalysis] -> [EntryAnalysis]
 sBy sorting = let sorter = (\x y ->

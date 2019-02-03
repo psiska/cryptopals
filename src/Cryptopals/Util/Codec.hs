@@ -43,9 +43,9 @@ sizedChunks size input =
 -- ["dk","f;","al","sj"]
 sizedChunksTake :: Int -> Int -> B.ByteString -> [B.ByteString]
 sizedChunksTake size count input =
-  snd $ fix (\rec (count, remainder, acc) ->
-    if (B.length remainder > size && count > 0)
-      then rec (count - 1, B.drop size remainder, acc ++ [B.take size remainder])
+  snd $ fix (\rec (icount, remainder, acc) ->
+    if (B.length remainder > size && icount > 0)
+      then rec (icount - 1, B.drop size remainder, acc ++ [B.take size remainder])
       else (B.empty, acc)) (count, input, [])
 
 -- Various other utils
@@ -55,6 +55,7 @@ subsequencesOfSize n xs = let l = length xs
                           in if n > l then [] else subsequencesBySize xs !! (l-n)
  where
    subsequencesBySize [] = [[[]]]
-   subsequencesBySize (x:xs) = let next = subsequencesBySize xs
-                             in zipWith (++) ([]:next) (map (map (x:)) next ++ [[]])
+   subsequencesBySize (y:ys) =
+     let next = subsequencesBySize ys
+     in zipWith (++) ([]:next) (map (map (y:)) next ++ [[]])
 

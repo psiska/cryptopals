@@ -16,4 +16,6 @@ toDecFromHex = toExpNum 16
 
 toExpNum :: Int -> [Int] -> Int
 toExpNum exp' input = foldl (\acc (i, expc) -> acc + (exp' ^ expc) * i) 0 zInput
-  where zInput = reverse $ zip (reverse input) [0..]
+  where
+    zInput :: [(Int, Int)]
+    zInput = reverse $ zip (reverse input) [0..]

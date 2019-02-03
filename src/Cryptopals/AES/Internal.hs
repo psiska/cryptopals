@@ -1,7 +1,7 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 module Cryptopals.AES.Internal where
 
-import qualified Data.ByteString as B
+--import qualified Data.ByteString as B
 
 import           Data.Bits
 import           Data.Word

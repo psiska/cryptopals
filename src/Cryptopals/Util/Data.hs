@@ -9,12 +9,11 @@ module Cryptopals.Util.Data
   ) where
 
 import qualified Data.ByteString as B
-import qualified Data.Text as T
 import qualified Data.Text.Encoding as TE
-import Data.Text.Prettyprint.Doc
-import Data.Word (Word8)
-import GHC.Generics (Generic)
-import Protolude
+import           Data.Text.Prettyprint.Doc
+import           Data.Word (Word8)
+import           GHC.Generics (Generic)
+import           Protolude
 
 data AnalysisResult = AnalysisResult
   { inputData :: B.ByteString
@@ -48,14 +47,12 @@ data Distance = Distance
 instance Pretty AnalysisResult where
   pretty AnalysisResult { keyUsed, resultData } =
     "-----------"
-    <+> sep genValues
-      where
-        genValues =
-          [ "key    :"
-          , pretty $ TE.decodeUtf8 keyUsed
-          , "result :"
-          , pretty $ TE.decodeUtf8 resultData
-          ]
+    <+> sep
+    [ "key    :"
+    , pretty $ TE.decodeUtf8 keyUsed
+    , "result :"
+    , pretty $ TE.decodeUtf8 resultData
+    ]
 
 instance Pretty EntryAnalysis where
   pretty ea =
@@ -89,5 +86,3 @@ instance Pretty TextAnalysis where
     <+> align (pretty (TE.decodeUtf8 sourceData))
     <+> hardline
     <+> vsep (map pretty results)
-
-

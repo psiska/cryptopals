@@ -5,46 +5,20 @@
 module Cryptopals.Util.Solve where
 
 import qualified Data.ByteString as B
-import           Data.List       (sortBy, uncons, (!!))
+import           Data.List       (sortBy, (!!))
 import           Data.Maybe      (catMaybes)
-import           Data.Word       (Word8)
-import qualified Data.Text as T
-import qualified Data.Text.Encoding as TE
 import           Data.Text.Prettyprint.Doc
 import           Cryptopals.Util.Codec
 import qualified Cryptopals.Util.Codec.Strict as CS
 import           Cryptopals.Util.Freq
-import qualified Cryptopals.Util.Freq as F
 import           Cryptopals.Util.Data
 import           Protolude
-
-
-singleEntryAnalysis :: B.ByteString -> Word8 -> EntryAnalysis
-singleEntryAnalysis source key =
-  let decoded = CS.xorWithWord8 key source
-      fv = freqVector decoded
-      validCharCount = length $ B.findIndices isEngChar decoded
-      charPercentage = (fromIntegral validCharCount) / fromIntegral (B.length decoded) * 100.0
-      distance = Distance
-        { euclidean = euclideanDistance fv englishVectorSorted
-        , manhattan = manhattanDistance fv englishVectorSorted
-        , minkowski = minkowskiDistance 2 fv englishVectorSorted
-        , cosine = cosineSimilarity fv englishVectorSorted
-        , jaccard = jaccardSimilarity  fv englishVectorSorted
-        }
-  in EntryAnalysis
-    { key = [key]
-    , decrypted = decoded
-    , validChar = validCharCount
-    , charPercentage = charPercentage
-    , distance = distance
-    }
 
 solveSingleXorKey :: B.ByteString -> TextAnalysis
 solveSingleXorKey source =
   TextAnalysis
     { sourceData = source
-    , results = map (singleEntryAnalysis source) singleByteKeys
+    , results = map (analyzeInput source) singleByteKeys
     }
 
 filteredAndCharSorted :: TextAnalysis -> TextAnalysis
@@ -103,8 +77,8 @@ hammingForKS input ks =
     -- create chunks
     chunks = sizedChunksTake ks chunkCount input
     -- create permutations
-    permutations = subsequencesOfSize 2 chunks
+    subSeqs = subsequencesOfSize 2 chunks
     -- compute hamming
-    hamming = fmap (\x -> hammingDistance (x !! 0) (x !! 1)) permutations
+    hamming = fmap (\x -> hammingDistance (x !! 0) (x !! 1)) subSeqs
     average :: [Int] -> Float
     average it = (fromIntegral (sum it) / fromIntegral chunkCount )
