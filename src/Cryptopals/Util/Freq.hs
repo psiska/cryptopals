@@ -48,7 +48,7 @@ letterFrequency source =
   in map (f source) ['a'..'z']
 
 letterFrequencyByAlpha :: B.ByteString -> [(Char, Double)]
-letterFrequencyByAlpha source = (sortBy (\f s -> compare (fst f) (fst s)) (letterFrequency source))
+letterFrequencyByAlpha source = sortBy (\f s -> compare (fst f) (fst s)) (letterFrequency source)
 
 -- | Frequencies definition of char and occurence for english language.
 englishFrequencies :: [(Char, Double)]
@@ -112,7 +112,7 @@ hammingDistance i1 i2 =
   let setBits :: (Num a, Bits a) => a -> Int
       setBits x
         | x == 0    = 0
-        | otherwise = 1 + (setBits (x .&. (x - 1)))
+        | otherwise = 1 + setBits (x .&. (x - 1))
   in foldl (\acc (w1, w2) -> acc + setBits (xor w1 w2)) 0 (B.zip i1 i2)
 
 -- | Analyze byte block with single Word8 as a key.
@@ -125,7 +125,6 @@ analyzeInput source key =
       -- obtain vector of frequencies for english text
       englishFv = map snd $ sortBy (\f s -> compare (fst f) (fst s)) englishFrequencies
       validCharCount = length $ B.findIndices isEngChar decoded
-      charPercentage = (fromIntegral validCharCount) / fromIntegral (B.length decoded) * 100.0
       distance = Distance
         { euclidean = euclideanDistance fv englishFv
         , manhattan = manhattanDistance fv englishFv
@@ -137,7 +136,7 @@ analyzeInput source key =
     { key = [key]
     , decrypted = decoded
     , validChar = validCharCount
-    , charPercentage = charPercentage
+    , charPercentage = fromIntegral validCharCount / fromIntegral (B.length decoded) * 100.0
     , distance = distance
     }
 

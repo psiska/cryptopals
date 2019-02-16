@@ -1,27 +1,21 @@
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE NamedFieldPuns #-}
-{-# LANGUAGE DuplicateRecordFields #-}
 {-# LANGUAGE AllowAmbiguousTypes       #-}
 {-# LANGUAGE DataKinds                 #-}
-{-# LANGUAGE DeriveGeneric             #-}
 {-# LANGUAGE DuplicateRecordFields     #-}
 {-# LANGUAGE FlexibleContexts          #-}
 {-# LANGUAGE NoMonomorphismRestriction #-}
-{-# LANGUAGE TypeApplications          #-}
 module Cryptopals.Util.Solve where
 
 import qualified Data.ByteString as B
-import           Data.Generics.Product
-import           Data.Generics.Internal.VL.Lens
 import           Data.List       (sortBy, (!!))
-import           Data.Maybe      (catMaybes)
-import           Data.Text.Prettyprint.Doc
+import           Data.Maybe      (mapMaybe)
 import           Cryptopals.Util.Codec
 import qualified Cryptopals.Util.Codec.Strict as CS
 import           Cryptopals.Util.Freq
 import           Cryptopals.Util.Data
 import           Protolude
+
 
 solveSingleXorKey :: B.ByteString -> DataAnalysis
 solveSingleXorKey source =
@@ -34,7 +28,7 @@ filteredAndCharSorted :: DataAnalysis -> DataAnalysis
 filteredAndCharSorted DataAnalysis { sourceData = s', results = r' } =
   DataAnalysis
     { sourceData = s'
-    , results = ((sBy preferCharCount) . fPosCosine) r'
+    , results = (sBy preferCharCount . fPosCosine) r'
     }
 
 xorResultFull :: B.ByteString -> DataAnalysis
@@ -52,7 +46,7 @@ solveXorKey size input =
 
 -- | Taking output from  solveXorKey
 keysFromData :: [DataAnalysis] -> [[Word8]]
-keysFromData = transpose . (map (concatMap key . results))
+keysFromData = transpose . map (concatMap key . results)
 
 -- | Apply key to some data and show result
 applyKey :: B.ByteString -> [Word8] -> AnalysisResult
@@ -70,7 +64,7 @@ applyKey input key =
 findKeySize :: (Int, Int) -> Int -> B.ByteString -> [(Int, Float)]
 findKeySize (lower, upper) chunkCount content =
   let sorter = (\x y -> compare (snd x) (snd y))
-  in sortBy sorter $ catMaybes $ fmap (hammingForKS content chunkCount) [lower..upper]
+  in sortBy sorter $ mapMaybe (hammingForKS content chunkCount) [lower..upper]
 
 hammingForKS :: B.ByteString -> Int -> Int -> Maybe (Int, Float)
 hammingForKS input chunkCount keySize =
@@ -85,4 +79,4 @@ hammingForKS input chunkCount keySize =
     -- compute hamming
     hamming = fmap (\x -> hammingDistance (x !! 0) (x !! 1)) subSeqs
     average :: [Int] -> Float
-    average it = (fromIntegral (sum it) / fromIntegral chunkCount )
+    average it = fromIntegral (sum it) / fromIntegral chunkCount

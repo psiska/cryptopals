@@ -14,6 +14,7 @@ cabal-version:       >=1.10
 library
   --main-is:            Main.hs
   exposed-modules:
+    Cryptopals.AES.AES
     Cryptopals.AES.Internal
     Cryptopals.Set1.Challenge1
     Cryptopals.Set1.Challenge2
@@ -34,6 +35,7 @@ library
     , base16-bytestring
     , base64-bytestring
     , bytestring
+    , containers
     , generic-lens
     --, massiv
     , prettyprinter

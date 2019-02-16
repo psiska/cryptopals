@@ -45,7 +45,7 @@ sizedChunks size input =
 sizedChunksTake :: Int -> Int -> B.ByteString -> [B.ByteString]
 sizedChunksTake size count input =
   snd $ fix (\rec (icount, remainder, acc) ->
-    if (B.length remainder > size && icount > 0)
+    if B.length remainder > size && icount > 0
       then rec (icount - 1, B.drop size remainder, acc ++ [B.take size remainder])
       else (B.empty, acc)) (count, input, [])
 
